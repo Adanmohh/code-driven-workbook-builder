@@ -7,7 +7,7 @@ import os
 import io
 import json
 from dotenv import load_dotenv
-import anthropic
+from claude_code_sdk import query, ClaudeCodeOptions, AssistantMessage, TextBlock
 from pdfminer.high_level import extract_text
 from PIL import Image
 import pytesseract
@@ -29,7 +29,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-anthropic_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+# Claude Code SDK doesn't require API key setup - it uses local Claude Code CLI
 
 class GenerateRequest(BaseModel):
     file_content: str
@@ -87,7 +87,7 @@ async def generate_workbook(file: UploadFile = File(...)):
     else:
         raise HTTPException(status_code=400, detail="Unsupported file type")
     
-    # Generate workbook code using Claude
+    # Generate workbook code using Claude Code SDK
     prompt = f"""
     Create a paginated React workbook component from the following content.
     Each page should be a separate component with proper styling.
@@ -111,15 +111,19 @@ async def generate_workbook(file: UploadFile = File(...)):
     """
     
     try:
-        response = anthropic_client.messages.create(
-            model="claude-opus-4-20250514",
-            max_tokens=4096,
-            messages=[{"role": "user", "content": prompt}]
+        options = ClaudeCodeOptions(
+            system_prompt="You are an expert React developer specializing in creating educational workbooks. Always return valid JSON.",
+            max_turns=1
         )
         
+        response_text = ""
+        async for message in query(prompt=prompt, options=options):
+            if isinstance(message, AssistantMessage):
+                for block in message.content:
+                    if isinstance(block, TextBlock):
+                        response_text += block.text
+        
         # Parse the response and extract JSON
-        response_text = response.content[0].text
-        # Extract JSON from response
         import re
         json_match = re.search(r'\{[\s\S]*\}', response_text)
         if json_match:
@@ -147,13 +151,19 @@ async def rewrite_page(request: RewritePageRequest):
     """
     
     try:
-        response = anthropic_client.messages.create(
-            model="claude-opus-4-20250514",
-            max_tokens=2048,
-            messages=[{"role": "user", "content": prompt}]
+        options = ClaudeCodeOptions(
+            system_prompt="You are an expert React developer. Return only the updated React component code.",
+            max_turns=1
         )
         
-        return {"code": response.content[0].text}
+        response_text = ""
+        async for message in query(prompt=prompt, options=options):
+            if isinstance(message, AssistantMessage):
+                for block in message.content:
+                    if isinstance(block, TextBlock):
+                        response_text += block.text
+        
+        return {"code": response_text}
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error rewriting page: {str(e)}")
@@ -174,14 +184,19 @@ async def rewrite_global(request: RewriteGlobalRequest):
     """
     
     try:
-        response = anthropic_client.messages.create(
-            model="claude-opus-4-20250514",
-            max_tokens=4096,
-            messages=[{"role": "user", "content": prompt}]
+        options = ClaudeCodeOptions(
+            system_prompt="You are an expert React developer. Return a JSON structure with changes for each page.",
+            max_turns=1
         )
         
+        response_text = ""
+        async for message in query(prompt=prompt, options=options):
+            if isinstance(message, AssistantMessage):
+                for block in message.content:
+                    if isinstance(block, TextBlock):
+                        response_text += block.text
+        
         # Parse and return the response
-        response_text = response.content[0].text
         import re
         json_match = re.search(r'\{[\s\S]*\}', response_text)
         if json_match:

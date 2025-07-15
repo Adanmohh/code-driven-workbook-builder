@@ -23,7 +23,7 @@ A web application that transforms screenshots and PDFs into editable, brand-read
 
 ### Backend
 - FastAPI + Uvicorn
-- Anthropic Claude API for AI generation
+- Claude Code SDK for AI generation
 - pdfminer.six for PDF text extraction
 - pytesseract for OCR from images
 
@@ -32,7 +32,7 @@ A web application that transforms screenshots and PDFs into editable, brand-read
 ### Prerequisites
 - Node.js 18+
 - Python 3.9+
-- Anthropic API key
+- Claude Code CLI installed globally (`npm install -g claude-code`)
 - (Optional) E2B API key for sandbox execution
 
 ### Installation
@@ -49,8 +49,8 @@ cd backend
 pip install -r requirements.txt
 
 # Create .env file and add your API keys:
-# ANTHROPIC_API_KEY=your_key_here
 # E2B_API_KEY=your_key_here (optional)
+# Claude Code SDK uses local Claude Code CLI - no API key needed
 ```
 
 3. Set up the frontend:
